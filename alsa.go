@@ -14,7 +14,7 @@ import (
 )
 
 /*
-#cgo pkg-config: alsa dl
+#cgo pkg-config: alsa
 #include "reader_thread.h"
 #include <alsa/asoundlib.h>
 #include <stdint.h>
