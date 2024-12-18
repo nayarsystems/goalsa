@@ -54,6 +54,7 @@ var (
 )
 
 // BufferParams specifies the buffer parameters of a device.
+// You do not need to specify all the fields, if you set the BufferParams to 0, default values are used
 type BufferParams struct {
 	BufferFrames int
 	PeriodFrames int
@@ -86,7 +87,7 @@ func (d *device) createDevice(deviceName string, channels int, format Format, ra
 		ret = C.snd_pcm_open(&d.h, deviceCString, C.SND_PCM_STREAM_CAPTURE, 0)
 	}
 	if ret < 0 {
-		return fmt.Errorf("could not open ALSA device %s", deviceName)
+		return createError("could not open ALSA device", ret)
 	}
 	runtime.SetFinalizer(d, (*device).Close)
 	var hwParams *C.snd_pcm_hw_params_t
@@ -115,6 +116,65 @@ func (d *device) createDevice(deviceName string, channels int, format Format, ra
 	if ret < 0 {
 		return createError("could not set rate params", ret)
 	}
+
+	/*
+		// set the buffer time
+		buffer_time := C.uint(buffertime)
+		ret = C.snd_pcm_hw_params_set_buffer_time_near(d.h, hwParams, &buffer_time, nil)
+		if ret < 0 {
+			return createError("could not set buffer time", ret)
+		}
+		bufferSize := C.snd_pcm_uframes_t(0)
+		ret = C.snd_pcm_hw_params_get_buffer_size(hwParams, &bufferSize)
+		if ret < 0 {
+			return createError("could not get buffer size", ret)
+		}
+
+		// set the period time
+		period_time := C.uint(buffertime / 4)
+		ret = C.snd_pcm_hw_params_set_period_time_near(d.h, hwParams, &period_time, nil)
+		if ret < 0 {
+			return createError("could not set period time", ret)
+		}
+		periodFrames := C.snd_pcm_uframes_t(0)
+
+		ret = C.snd_pcm_hw_params_get_period_size(hwParams, &periodFrames, nil)
+		if ret < 0 {
+			return createError("could not get period size", ret)
+		}*/
+
+	/*
+		// set bufferSize
+		var bufferSize = C.snd_pcm_uframes_t(bufferParams.BufferFrames)
+		if bufferParams.BufferFrames == 0 {
+			// Default buffer size: max buffer size
+			ret = C.snd_pcm_hw_params_get_buffer_size_max(hwParams, &bufferSize)
+			if ret < 0 {
+				return createError("could not get buffer size", ret)
+			}
+		}
+		ret = C.snd_pcm_hw_params_set_buffer_size_near(d.h, hwParams, &bufferSize)
+		if ret < 0 {
+			return createError("could not set buffer size", ret)
+		}
+		// Default period size: 1/8 of a second
+		var periodFrames = C.snd_pcm_uframes_t(rate / 8)
+		if bufferParams.PeriodFrames > 0 {
+			periodFrames = C.snd_pcm_uframes_t(bufferParams.PeriodFrames)
+		} else if bufferParams.Periods > 0 {
+			periodFrames = C.snd_pcm_uframes_t(int(bufferSize) / bufferParams.Periods)
+		}
+
+		ret = C.snd_pcm_hw_params_set_period_size_near(d.h, hwParams, &periodFrames, nil)
+		if ret < 0 {
+			return createError("could not set period size", ret)
+		}
+
+		if bufferParams.Periods == 0 {
+			bufferParams.Periods = int(bufferSize) / int(periodFrames)
+		}*/
+
+	// set buffer size
 	var bufferSize = C.snd_pcm_uframes_t(bufferParams.BufferFrames)
 	if bufferParams.BufferFrames == 0 {
 		// Default buffer size: max buffer size
@@ -127,25 +187,22 @@ func (d *device) createDevice(deviceName string, channels int, format Format, ra
 	if ret < 0 {
 		return createError("could not set buffer size", ret)
 	}
-	// Default period size: 1/8 of a second
-	var periodFrames = C.snd_pcm_uframes_t(rate / 8)
-	if bufferParams.PeriodFrames > 0 {
-		periodFrames = C.snd_pcm_uframes_t(bufferParams.PeriodFrames)
-	} else if bufferParams.Periods > 0 {
-		periodFrames = C.snd_pcm_uframes_t(int(bufferSize) / bufferParams.Periods)
-	}
+
+	// set period size
+	var periodFrames = C.snd_pcm_uframes_t(bufferParams.PeriodFrames)
 	ret = C.snd_pcm_hw_params_set_period_size_near(d.h, hwParams, &periodFrames, nil)
 	if ret < 0 {
 		return createError("could not set period size", ret)
 	}
+
+	// set period number
 	var periods = C.uint(bufferParams.Periods)
-	var dir = C.int(1)
-	ret = C.snd_pcm_hw_params_set_periods_near(d.h, hwParams, &periods, &dir)
+	ret = C.snd_pcm_hw_params_set_periods_near(d.h, hwParams, &periods, nil)
 	if ret < 0 {
 		return createError("could not set periods near", ret)
 	}
 
-	ret = C.snd_pcm_hw_params_get_periods(hwParams, &periods, &dir)
+	ret = C.snd_pcm_hw_params_get_periods(hwParams, &periods, nil)
 	if ret < 0 {
 		return createError("could not get periods", ret)
 	}
@@ -200,6 +257,7 @@ type CaptureDevice struct {
 func NewCaptureDevice(deviceName string, channels int, format Format, rate int, bufferParams BufferParams) (c *CaptureDevice, err error) {
 	c = new(CaptureDevice)
 	err = c.createDevice(deviceName, channels, format, rate, false, bufferParams)
+	fmt.Printf("Capture bufferParams: %v\n", c.BufferParams)
 	if err != nil {
 		return nil, err
 	}
