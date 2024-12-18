@@ -257,7 +257,6 @@ type CaptureDevice struct {
 func NewCaptureDevice(deviceName string, channels int, format Format, rate int, bufferParams BufferParams) (c *CaptureDevice, err error) {
 	c = new(CaptureDevice)
 	err = c.createDevice(deviceName, channels, format, rate, false, bufferParams)
-	fmt.Printf("Capture bufferParams: %v\n", c.BufferParams)
 	if err != nil {
 		return nil, err
 	}
