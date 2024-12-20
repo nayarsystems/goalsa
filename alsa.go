@@ -223,7 +223,7 @@ func (d *device) createDevice(deviceName string, channels int, format Format, ra
 // Close closes a device and frees the resources associated with it.
 func (d *device) Close() {
 	if d.h != nil {
-		C.snd_pcm_drain(d.h)
+		C.snd_pcm_drop(d.h)
 		C.snd_pcm_close(d.h)
 		d.h = nil
 	}
