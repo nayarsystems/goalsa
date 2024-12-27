@@ -234,8 +234,8 @@ func (d *device) Close() {
 	runtime.SetFinalizer(d, nil)
 }
 
-func (d device) formatSampleSize() (s int) {
-	switch d.Format {
+func FormatSampleSize(f Format) (s int) {
+	switch f {
 	case FormatS8, FormatU8:
 		return 1
 	case FormatS16LE, FormatS16BE, FormatU16LE, FormatU16BE:
@@ -267,7 +267,7 @@ func (c *CaptureDevice) StartReadThread() error {
 	if c.readerThread != nil {
 		return errors.New("Reader thread already running")
 	}
-	periodBytes := C.int(c.formatSampleSize() * c.Channels * c.BufferParams.PeriodFrames)
+	periodBytes := C.int(FormatSampleSize(c.Format) * c.Channels * c.BufferParams.PeriodFrames)
 	// Alocate a 1 second buffer
 	nbuf := C.int(c.Rate / c.BufferParams.PeriodFrames)
 	c.readerThread = C.reader_thread_start(c.h, periodBytes, C.int(c.BufferParams.PeriodFrames), nbuf)
@@ -288,19 +288,19 @@ func (c *CaptureDevice) Read(buffer interface{}) (samples int, err error) {
 	sizeError := errors.New("Read requires a matching sample size")
 	switch bufferType.Elem().Kind() {
 	case reflect.Int8:
-		if c.formatSampleSize() != 1 {
+		if FormatSampleSize(c.Format) != 1 {
 			return 0, sizeError
 		}
 	case reflect.Int16:
-		if c.formatSampleSize() != 2 {
+		if FormatSampleSize(c.Format) != 2 {
 			return 0, sizeError
 		}
 	case reflect.Int32, reflect.Float32:
-		if c.formatSampleSize() != 4 {
+		if FormatSampleSize(c.Format) != 4 {
 			return 0, sizeError
 		}
 	case reflect.Float64:
-		if c.formatSampleSize() != 8 {
+		if FormatSampleSize(c.Format) != 8 {
 			return 0, sizeError
 		}
 	default:
@@ -365,19 +365,19 @@ func (p *PlaybackDevice) Write(buffer interface{}) (samples int, err error) {
 	sizeError := errors.New("Write requires a matching sample size")
 	switch bufferType.Elem().Kind() {
 	case reflect.Int8:
-		if p.formatSampleSize() != 1 {
+		if FormatSampleSize(p.Format) != 1 {
 			return 0, sizeError
 		}
 	case reflect.Int16:
-		if p.formatSampleSize() != 2 {
+		if FormatSampleSize(p.Format) != 2 {
 			return 0, sizeError
 		}
 	case reflect.Int32, reflect.Float32:
-		if p.formatSampleSize() != 4 {
+		if FormatSampleSize(p.Format) != 4 {
 			return 0, sizeError
 		}
 	case reflect.Float64:
-		if p.formatSampleSize() != 8 {
+		if FormatSampleSize(p.Format) != 8 {
 			return 0, sizeError
 		}
 	default:
@@ -400,4 +400,92 @@ func (p *PlaybackDevice) Write(buffer interface{}) (samples int, err error) {
 	}
 	samples = int(ret) * p.Channels
 	return
+}
+
+// FormatToString returns a string representation of the format.
+func FormatToString(format Format) string {
+	switch format {
+	case FormatS8:
+		return "S8"
+	case FormatU8:
+		return "U8"
+	case FormatS16LE:
+		return "S16LE"
+	case FormatS16BE:
+		return "S16BE"
+	case FormatU16LE:
+		return "U16LE"
+	case FormatU16BE:
+		return "U16BE"
+	case FormatS24LE:
+		return "S24LE"
+	case FormatS24BE:
+		return "S24BE"
+	case FormatU24LE:
+		return "U24LE"
+	case FormatU24BE:
+		return "U24BE"
+	case FormatS32LE:
+		return "S32LE"
+	case FormatS32BE:
+		return "S32BE"
+	case FormatU32LE:
+		return "U32LE"
+	case FormatU32BE:
+		return "U32BE"
+	case FormatFloatLE:
+		return "FloatLE"
+	case FormatFloatBE:
+		return "FloatBE"
+	case FormatFloat64LE:
+		return "Float64LE"
+	case FormatFloat64BE:
+		return "Float64BE"
+	default:
+		return "Unknown Format"
+	}
+}
+
+// FormatToString returns the format from a string representation.
+func StringToFormat(formatStr string) Format {
+	switch formatStr {
+	case "S8":
+		return FormatS8
+	case "U8":
+		return FormatU8
+	case "S16LE":
+		return FormatS16LE
+	case "S16BE":
+		return FormatS16BE
+	case "U16LE":
+		return FormatU16LE
+	case "U16BE":
+		return FormatU16BE
+	case "S24LE":
+		return FormatS24LE
+	case "S24BE":
+		return FormatS24BE
+	case "U24LE":
+		return FormatU24LE
+	case "U24BE":
+		return FormatU24BE
+	case "S32LE":
+		return FormatS32LE
+	case "S32BE":
+		return FormatS32BE
+	case "U32LE":
+		return FormatU32LE
+	case "U32BE":
+		return FormatU32BE
+	case "FloatLE":
+		return FormatFloatLE
+	case "FloatBE":
+		return FormatFloatBE
+	case "Float64LE":
+		return FormatFloat64LE
+	case "Float64BE":
+		return FormatFloat64BE
+	default:
+		return -1 // Unknown format
+	}
 }
