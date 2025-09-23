@@ -1,4 +1,4 @@
-module github.com/vdepedraza/goalsa
+module github.com/nayarsystems/goalsa
 
 go 1.22.2
 
